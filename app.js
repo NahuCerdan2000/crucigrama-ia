@@ -406,6 +406,12 @@ function renderCluesList() {
 
     li.addEventListener("click", () => {
       selectWord(w.id);
+      if (window.innerWidth <= 1280) {
+        const boardEl = document.getElementById("activeClueBanner") || document.getElementById("crosswordWrapper");
+        if (boardEl) {
+          boardEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
     });
 
     if (w.direction === "H") {
@@ -527,14 +533,33 @@ function updateSelectionUI() {
   const activeClueItem = document.getElementById(`clue_item_${state.activeWordId}`);
   if (activeClueItem) {
     activeClueItem.classList.add("active");
-    activeClueItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    scrollClueIntoSidebar(activeClueItem);
   }
+}
+
+// Scroll clue inside its own sidebar container ONLY on desktop without moving the main page
+function scrollClueIntoSidebar(activeClueItem) {
+  if (window.innerWidth <= 1280) return; // In mobile/tablet, clues are below the board, NEVER scroll down!
+  const container = document.querySelector(".clues-scroll-container");
+  if (!container || !activeClueItem) return;
+
+  const itemOffset = activeClueItem.offsetTop - container.offsetTop;
+  container.scrollTo({
+    top: Math.max(0, itemOffset - 20),
+    behavior: "smooth"
+  });
 }
 
 function scrollCellIntoView(r, c) {
   const cellEl = document.getElementById(`cell_${r}_${c}`);
-  if (cellEl) {
-    cellEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  const wrapper = document.getElementById("crosswordWrapper");
+  if (cellEl && wrapper) {
+    // Only adjust horizontal scroll inside the wrapper if cell is clipped horizontally
+    const cellRect = cellEl.getBoundingClientRect();
+    const wrapRect = wrapper.getBoundingClientRect();
+    if (cellRect.left < wrapRect.left || cellRect.right > wrapRect.right) {
+      cellEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
   }
 }
 
