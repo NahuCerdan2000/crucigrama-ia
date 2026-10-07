@@ -449,6 +449,7 @@ function handleCellClick(r, c) {
   }
 
   updateSelectionUI();
+  focusMobileInput();
 }
 
 function selectWord(wordId, cellIndex = 0) {
@@ -467,6 +468,7 @@ function selectWord(wordId, cellIndex = 0) {
 
   updateSelectionUI();
   scrollCellIntoView(targetR, targetC);
+  focusMobileInput();
 }
 
 function updateSelectionUI() {
@@ -513,8 +515,10 @@ function updateSelectionUI() {
   const currentCellEl = document.getElementById(`cell_${state.activeCell.r}_${state.activeCell.c}`);
   if (currentCellEl) {
     currentCellEl.classList.add("active-focus");
-    currentCellEl.focus();
   }
+
+  // Focus mobile proxy so mobile virtual keyboard stays open without stealing focus from cell visual
+  focusMobileInput();
 
   // Highlight active clue in sidebar
   document.querySelectorAll(".clue-item").forEach(item => {
@@ -578,76 +582,215 @@ function cycleNextWord() {
 }
 
 // =============================================================================
-// 6. KEYBOARD & INPUT HANDLING
+// 6. KEYBOARD & INPUT HANDLING (DESKTOP & MOBILE KEYBOARD PROXY)
 // =============================================================================
+
+let lastInputTimestamp = 0;
+let lastInputChar = "";
+
+function resetProxyValue(proxy) {
+  if (!proxy) return;
+  // Use a sentinel space to allow backspace detection in all mobile browsers (Android/iOS)
+  proxy.value = " ";
+  try {
+    proxy.setSelectionRange(1, 1);
+  } catch (e) {}
+}
+
+function focusMobileInput() {
+  const proxy = document.getElementById("mobileInputProxy");
+  if (!proxy || !state.isPlaying || state.isFinished) return;
+  resetProxyValue(proxy);
+  try {
+    proxy.focus({ preventScroll: true });
+  } catch (e) {
+    proxy.focus();
+  }
+}
+
+function applyLetterInput(letter) {
+  if (!state.isPlaying || state.isFinished || !state.activeCell) return;
+
+  const now = performance.now();
+  if (now - lastInputTimestamp < 50 && lastInputChar === letter) {
+    return; // Prevent duplicated input when both beforeinput & input fire
+  }
+  lastInputTimestamp = now;
+  lastInputChar = letter;
+
+  const currentCoordKey = `${state.activeCell.r}_${state.activeCell.c}`;
+  const char = letter.toUpperCase();
+  state.userGrid[currentCoordKey] = char;
+
+  const cellEl = document.getElementById(`cell_${state.activeCell.r}_${state.activeCell.c}`);
+  if (cellEl) {
+    const letterSpan = cellEl.querySelector(".cell-letter");
+    if (letterSpan) letterSpan.textContent = char;
+  }
+
+  sfx.playKey();
+  advanceActiveCell(true);
+  checkAllWordsProgress();
+}
+
+function applyBackspace() {
+  if (!state.isPlaying || state.isFinished || !state.activeCell) return;
+
+  const now = performance.now();
+  if (now - lastInputTimestamp < 50 && lastInputChar === "BACKSPACE") {
+    return; // Prevent duplicate backspace event
+  }
+  lastInputTimestamp = now;
+  lastInputChar = "BACKSPACE";
+
+  const currentCoordKey = `${state.activeCell.r}_${state.activeCell.c}`;
+
+  if (state.userGrid[currentCoordKey]) {
+    delete state.userGrid[currentCoordKey];
+    const cellEl = document.getElementById(`cell_${state.activeCell.r}_${state.activeCell.c}`);
+    if (cellEl) {
+      const letterSpan = cellEl.querySelector(".cell-letter");
+      if (letterSpan) letterSpan.textContent = "";
+    }
+    sfx.playErase();
+  } else {
+    // Empty already, move back and delete previous
+    advanceActiveCell(false);
+    const prevKey = `${state.activeCell.r}_${state.activeCell.c}`;
+    delete state.userGrid[prevKey];
+    const prevCellEl = document.getElementById(`cell_${state.activeCell.r}_${state.activeCell.c}`);
+    if (prevCellEl) {
+      const letterSpan = prevCellEl.querySelector(".cell-letter");
+      if (letterSpan) letterSpan.textContent = "";
+    }
+    sfx.playErase();
+  }
+  checkAllWordsProgress();
+}
+
+function applySpaceToggle() {
+  if (!state.isPlaying || state.isFinished || !state.activeCell) return;
+  const currentCoordKey = `${state.activeCell.r}_${state.activeCell.c}`;
+  const meta = state.cellMetadata[currentCoordKey];
+  if (meta && meta.words.length > 1) {
+    const otherWord = meta.words.find(w => w.id !== state.activeWordId);
+    if (otherWord) {
+      state.activeWordId = otherWord.id;
+      state.activeDirection = otherWord.direction;
+      updateSelectionUI();
+    }
+  }
+}
+
+function setupMobileProxyListeners() {
+  const proxy = document.getElementById("mobileInputProxy");
+  if (!proxy) return;
+
+  resetProxyValue(proxy);
+
+  // 1. beforeinput event (Modern mobile browsers standard for iOS Safari & Android Chrome)
+  proxy.addEventListener("beforeinput", (e) => {
+    if (!state.isPlaying || state.isFinished || !state.activeCell) return;
+
+    if (e.inputType === "deleteContentBackward" || e.inputType === "deleteContentForward") {
+      e.preventDefault();
+      applyBackspace();
+      resetProxyValue(proxy);
+      return;
+    }
+
+    if (e.data) {
+      e.preventDefault();
+      const letters = e.data.replace(/[^a-zA-Z]/g, "").toUpperCase();
+      if (letters.length > 0) {
+        for (const ch of letters) {
+          applyLetterInput(ch);
+        }
+      }
+      resetProxyValue(proxy);
+    }
+  });
+
+  // 2. input event (Fallback for mobile keyboards with aggressive IME/predictive text)
+  proxy.addEventListener("input", (e) => {
+    if (!state.isPlaying || state.isFinished || !state.activeCell) return;
+
+    const val = proxy.value;
+    if (val === "") {
+      // Sentinel space was deleted -> Backspace pressed
+      applyBackspace();
+    } else {
+      const clean = val.replace(/\s/g, "").replace(/[^a-zA-Z]/g, "").toUpperCase();
+      if (clean.length > 0) {
+        for (const ch of clean) {
+          applyLetterInput(ch);
+        }
+      }
+    }
+    resetProxyValue(proxy);
+  });
+
+  // 3. keydown event on proxy (Physical keyboards or virtual keys emitting keydown)
+  proxy.addEventListener("keydown", (e) => {
+    if (!state.isPlaying || state.isFinished || !state.activeCell) return;
+
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      applyBackspace();
+      resetProxyValue(proxy);
+      return;
+    }
+
+    if (e.key === " " || e.code === "Space") {
+      e.preventDefault();
+      applySpaceToggle();
+      resetProxyValue(proxy);
+      return;
+    }
+
+    if (e.key === "Tab" || e.key === "Enter") {
+      e.preventDefault();
+      cycleNextWord();
+      resetProxyValue(proxy);
+      return;
+    }
+
+    if (e.key === "ArrowUp") { e.preventDefault(); moveByArrow(-1, 0); }
+    if (e.key === "ArrowDown") { e.preventDefault(); moveByArrow(1, 0); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); moveByArrow(0, -1); }
+    if (e.key === "ArrowRight") { e.preventDefault(); moveByArrow(0, 1); }
+  });
+}
 
 function setupKeyboardListeners() {
   window.addEventListener("keydown", (e) => {
-    // If typing in an input field (like username prompt), ignore game keyboard
+    // If the event happened inside the mobile proxy, it was already handled by setupMobileProxyListeners
+    if (e.target && e.target.id === "mobileInputProxy") return;
+    // If typing in another input field (username or cloud modal), ignore game shortcuts
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
     if (!state.isPlaying || state.isFinished) return;
     if (!state.activeCell) return;
 
     const key = e.key;
-    const currentCoordKey = `${state.activeCell.r}_${state.activeCell.c}`;
 
     // Alphabet Letters (A-Z)
     if (/^[a-zA-Z]$/.test(key)) {
       e.preventDefault();
-      const letter = key.toUpperCase();
-      state.userGrid[currentCoordKey] = letter;
-
-      const cellEl = document.getElementById(`cell_${state.activeCell.r}_${state.activeCell.c}`);
-      if (cellEl) {
-        const letterSpan = cellEl.querySelector(".cell-letter");
-        if (letterSpan) letterSpan.textContent = letter;
-      }
-
-      sfx.playKey();
-      advanceActiveCell(true);
-      checkAllWordsProgress();
+      applyLetterInput(key);
       return;
     }
 
     // Backspace / Delete
     if (key === "Backspace" || key === "Delete") {
       e.preventDefault();
-      if (state.userGrid[currentCoordKey]) {
-        delete state.userGrid[currentCoordKey];
-        const cellEl = document.getElementById(`cell_${state.activeCell.r}_${state.activeCell.c}`);
-        if (cellEl) {
-          const letterSpan = cellEl.querySelector(".cell-letter");
-          if (letterSpan) letterSpan.textContent = "";
-        }
-        sfx.playErase();
-      } else {
-        // Empty already, move back and delete previous
-        advanceActiveCell(false);
-        const prevKey = `${state.activeCell.r}_${state.activeCell.c}`;
-        delete state.userGrid[prevKey];
-        const prevCellEl = document.getElementById(`cell_${state.activeCell.r}_${state.activeCell.c}`);
-        if (prevCellEl) {
-          const letterSpan = prevCellEl.querySelector(".cell-letter");
-          if (letterSpan) letterSpan.textContent = "";
-        }
-        sfx.playErase();
-      }
-      checkAllWordsProgress();
+      applyBackspace();
       return;
     }
 
     // Spacebar toggles word direction if at an intersection
-    if (key === " ") {
+    if (key === " " || e.code === "Space") {
       e.preventDefault();
-      const meta = state.cellMetadata[currentCoordKey];
-      if (meta && meta.words.length > 1) {
-        const otherWord = meta.words.find(w => w.id !== state.activeWordId);
-        if (otherWord) {
-          state.activeWordId = otherWord.id;
-          state.activeDirection = otherWord.direction;
-          updateSelectionUI();
-        }
-      }
+      applySpaceToggle();
       return;
     }
 
@@ -1146,6 +1289,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderCrosswordGrid();
   renderCluesList();
   setupKeyboardListeners();
+  setupMobileProxyListeners();
   setupNeuralCanvas();
   initSupabase();
 
@@ -1225,6 +1369,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Select Word 1 by default
     selectWord(1);
+    focusMobileInput();
     sfx.init();
   });
 
@@ -1276,6 +1421,14 @@ document.addEventListener("DOMContentLoaded", () => {
       renderLeaderboardModal(state.operatorName);
     }
   });
+
+  // Mobile Keyboard Button
+  const mobileKeyboardBtn = document.getElementById("openMobileKeyboardBtn");
+  if (mobileKeyboardBtn) {
+    mobileKeyboardBtn.addEventListener("click", () => {
+      focusMobileInput();
+    });
+  }
 
   // Action Buttons
   document.getElementById("checkPuzzleBtn").addEventListener("click", checkPuzzleAnswers);

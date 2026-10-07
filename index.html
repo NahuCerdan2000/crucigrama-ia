@@ -81,7 +81,9 @@
             <span class="shortcut-tip"><kbd>Space</kbd> Direction</span>
             <span class="shortcut-tip"><kbd>Backspace</kbd> Erase</span>
           </div>
-          <div class="action-buttons">
+            <button id="openMobileKeyboardBtn" class="action-btn action-btn-accent mobile-only-btn" title="Open device keyboard">
+              <span>⌨️ Teclado</span>
+            </button>
             <button id="checkPuzzleBtn" class="action-btn action-btn-secondary" title="Check your current answers">
               <span>🔍 Check Answers</span>
             </button>
@@ -93,6 +95,20 @@
             </button>
           </div>
         </div>
+
+        <!-- Hidden input proxy for mobile virtual keyboards -->
+        <input 
+          type="text" 
+          id="mobileInputProxy" 
+          class="mobile-input-proxy" 
+          autocomplete="off" 
+          autocorrect="off" 
+          autocapitalize="characters" 
+          spellcheck="false" 
+          inputmode="text" 
+          aria-label="Entrada de letra para el crucigrama"
+          tabindex="-1"
+        >
 
         <div class="crossword-wrapper" id="crosswordWrapper">
           <div class="crossword-grid" id="crosswordGrid" role="grid" aria-label="Artificial Intelligence Crossword">

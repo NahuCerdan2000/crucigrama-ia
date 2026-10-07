@@ -1247,3 +1247,50 @@ kbd {
     padding: 1.5rem;
   }
 }
+
+/* =============================================================================
+   MOBILE VIRTUAL KEYBOARD PROXY & CONTROLS
+   ============================================================================= */
+
+/* Invisible proxy input that triggers native software keyboards on iOS & Android */
+.mobile-input-proxy {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 1px;
+  opacity: 0.001;
+  pointer-events: none;
+  font-size: 16px; /* Crucial: 16px prevents iOS Safari from automatic zooming when focused */
+  border: none;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  z-index: -1;
+}
+
+.action-btn-accent {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.action-btn-accent:hover {
+  background: rgba(0, 240, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+/* Mobile keyboard button is hidden on wide desktop screens, visible on touch/mobile devices */
+.mobile-only-btn {
+  display: none;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .mobile-only-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+}
+
