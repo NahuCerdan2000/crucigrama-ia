@@ -406,7 +406,7 @@ function renderCluesList() {
 
     li.addEventListener("click", () => {
       selectWord(w.id);
-      if (window.innerWidth <= 1280) {
+      if (window.innerWidth <= 900) {
         const boardEl = document.getElementById("activeClueBanner") || document.getElementById("crosswordWrapper");
         if (boardEl) {
           boardEl.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -539,7 +539,7 @@ function updateSelectionUI() {
 
 // Scroll clue inside its own sidebar container ONLY on desktop without moving the main page
 function scrollClueIntoSidebar(activeClueItem) {
-  if (window.innerWidth <= 1280) return; // In mobile/tablet, clues are below the board, NEVER scroll down!
+  if (window.innerWidth <= 900) return; // In mobile/tablet, clues are below the board, NEVER scroll down!
   const container = document.querySelector(".clues-scroll-container");
   if (!container || !activeClueItem) return;
 
