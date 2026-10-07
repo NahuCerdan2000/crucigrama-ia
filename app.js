@@ -1015,6 +1015,10 @@ function initSupabase() {
     } catch (e) {}
   }
 
+  if (url) {
+    url = url.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
+  }
+
   if (url && anonKey && window.supabase && typeof window.supabase.createClient === "function") {
     try {
       supabaseClient = window.supabase.createClient(url, anonKey);
@@ -1404,7 +1408,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    localStorage.setItem("ai_supabase_credentials", JSON.stringify({ url, anonKey }));
+    const cleanUrl = url.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
+    localStorage.setItem("ai_supabase_credentials", JSON.stringify({ url: cleanUrl, anonKey }));
     initSupabase();
     cloudModal.classList.add("hidden");
     alert("¡Credenciales guardadas!\n\n💡 IMPORTANTE PARA VERCEL: Para que tus amigos en otros dispositivos compartan la misma tabla de puntuaciones, recuerda pegar estas mismas claves en el archivo 'supabase-config.js' y subirlas a GitHub.");
