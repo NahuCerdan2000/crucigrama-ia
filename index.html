@@ -217,14 +217,22 @@
       </div>
 
       <div class="leaderboard-footer">
-        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <button id="resetLeaderboardBtn" class="cyber-btn cyber-btn-outline" title="Reset leaderboard to default factory scores">
+        <div class="leaderboard-status" id="leaderboardStatusContainer">
+          <span class="status-indicator-dot online" id="leaderboardStatusDot"></span>
+          <span id="leaderboardStatusText" class="leaderboard-status-text">Cloud Sync: Online</span>
+        </div>
+
+        <!-- Admin Controls: Hidden from normal players (activatable via ?admin=true or 5 clicks on ranking badge) -->
+        <div id="adminControlsContainer" class="admin-controls-container" style="display: none;">
+          <span class="admin-badge">ADMIN</span>
+          <button id="resetLeaderboardBtn" class="cyber-btn cyber-btn-outline cyber-btn-sm" title="Reset leaderboard scores">
             ↺ Reset Scores
           </button>
-          <button id="cloudDbConfigBtn" class="cyber-btn cyber-btn-secondary" title="Configure Supabase Cloud Database">
-            ☁️ Supabase Setup
+          <button id="cloudDbConfigBtn" class="cyber-btn cyber-btn-secondary cyber-btn-sm" title="Configure Supabase Cloud Database">
+            ⚙️ Supabase Setup
           </button>
         </div>
+
         <button id="resumeFromLeaderboardBtn" class="cyber-btn cyber-btn-primary">
           Continue Playing
         </button>
@@ -277,6 +285,11 @@
           <button type="button" id="disconnectCloudBtn" class="cyber-btn cyber-btn-outline">
             Use Local Storage
           </button>
+        </div>
+
+        <div style="margin-top: 1.25rem; padding: 0.85rem; border-radius: var(--radius-sm); background: rgba(0,240,255,0.06); border: 1px solid rgba(0,240,255,0.2); font-size: 0.78rem; line-height: 1.45; color: var(--text-muted);">
+          <strong style="color: var(--accent-cyan); display: block; margin-bottom: 0.25rem;">💡 Sincronización Global en Vercel:</strong>
+          Para que todos los jugadores en cualquier computadora o celular compartan el mismo Top 10, pega la URL y la Anon Key directamente en el archivo <code>supabase-config.js</code> de tu repositorio.
         </div>
       </form>
     </div>

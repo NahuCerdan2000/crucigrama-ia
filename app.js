@@ -484,7 +484,7 @@ function updateSelectionUI() {
 
   // Update banner
   if (activeWordObj) {
-    document.getElementById("activeClueTag").textContent = `#${activeWordObj.id} ${activeWordObj.displayWord.toUpperCase()} [${activeWordObj.lengthText}]`;
+    document.getElementById("activeClueTag").textContent = `#${activeWordObj.id} • ${activeWordObj.lengthText}`;
     document.getElementById("activeDirectionTag").textContent = activeWordObj.direction === "H" ? "ACROSS ➔" : "DOWN ⬇";
     document.getElementById("activeClueText").textContent = activeWordObj.clueEn;
 
@@ -970,18 +970,47 @@ function formatTime(totalSec) {
 const LEADERBOARD_KEY = "ai_crossword_leaderboard_v1";
 let supabaseClient = null;
 
+// Admin Mode Management
+function checkAdminMode() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasAdminParam = urlParams.get("admin") === "true" || urlParams.get("admin") === "1" || window.location.hash === "#admin";
+  const storedAdmin = localStorage.getItem("ai_admin_mode") === "true";
+  return hasAdminParam || storedAdmin;
+}
+
+function updateAdminUI() {
+  const isAdmin = checkAdminMode();
+  const adminContainer = document.getElementById("adminControlsContainer");
+  if (adminContainer) {
+    adminContainer.style.display = isAdmin ? "flex" : "none";
+  }
+}
+
+function toggleAdminMode(forceState) {
+  const currentState = localStorage.getItem("ai_admin_mode") === "true";
+  const newState = typeof forceState === "boolean" ? forceState : !currentState;
+  localStorage.setItem("ai_admin_mode", newState ? "true" : "false");
+  updateAdminUI();
+  if (newState) {
+    alert("🛠️ Modo Administrador ACTIVADO.\nLas opciones de configuración y reset de base de datos ahora son visibles.");
+  } else {
+    alert("🔒 Modo Administrador DESACTIVADO.");
+  }
+  return newState;
+}
+
 function initSupabase() {
   const cfg = window.SUPABASE_CONFIG || {};
-  let url = cfg.url || "";
-  let anonKey = cfg.anonKey || "";
+  let url = (cfg.url || "").trim();
+  let anonKey = (cfg.anonKey || "").trim();
 
   const stored = localStorage.getItem("ai_supabase_credentials");
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
       if (parsed.url && parsed.anonKey) {
-        url = parsed.url;
-        anonKey = parsed.anonKey;
+        url = parsed.url.trim();
+        anonKey = parsed.anonKey.trim();
       }
     } catch (e) {}
   }
@@ -1001,10 +1030,19 @@ function initSupabase() {
 }
 
 function updateCloudStatusUI(isOnline) {
+  const dot = document.getElementById("leaderboardStatusDot");
+  const text = document.getElementById("leaderboardStatusText");
   const btn = document.getElementById("cloudDbConfigBtn");
+
+  if (dot) {
+    dot.className = `status-indicator-dot ${isOnline ? "online" : "offline"}`;
+  }
+  if (text) {
+    text.textContent = isOnline ? "Cloud Sync: Online 🟢" : "Local Storage Mode 💾";
+  }
   if (btn) {
-    btn.innerHTML = isOnline ? "☁️ Supabase: Online 🟢" : "☁️ Supabase Setup";
-    btn.classList.toggle("hud-btn-accent", isOnline);
+    btn.innerHTML = isOnline ? "⚙️ Supabase: Online" : "⚙️ Supabase Setup";
+    btn.classList.toggle("cyber-btn-secondary", !isOnline);
   }
 }
 
@@ -1020,7 +1058,9 @@ function setupSupabaseRealtime() {
         }
       })
       .subscribe();
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Realtime setup notice:", e);
+  }
 }
 
 async function getLeaderboard() {
@@ -1032,7 +1072,9 @@ async function getLeaderboard() {
         .order("time_sec", { ascending: true })
         .limit(10);
 
-      if (!error && Array.isArray(data) && data.length > 0) {
+      if (error) {
+        console.error("❌ Error al obtener puntuaciones de Supabase:", error);
+      } else if (Array.isArray(data) && data.length > 0) {
         return data.map(item => ({
           name: item.name,
           timeSec: item.time_sec,
@@ -1077,13 +1119,18 @@ async function recordLeaderboardEntry(name, totalSeconds, penalties) {
   // 1. Save to Supabase Cloud if connected
   if (supabaseClient) {
     try {
-      await supabaseClient.from("leaderboard").insert([{
+      const { data, error } = await supabaseClient.from("leaderboard").insert([{
         name: newEntry.name,
         time_sec: newEntry.timeSec,
         penalties: newEntry.penalties
       }]);
+      if (error) {
+        console.error("❌ Error guardando puntuación en Supabase:", error);
+      } else {
+        console.log("✅ Puntuación guardada exitosamente en Supabase Cloud!");
+      }
     } catch (e) {
-      console.warn("Failed to insert into Supabase:", e);
+      console.warn("Excepción al insertar en Supabase:", e);
     }
   }
 
@@ -1112,6 +1159,7 @@ async function recordLeaderboardEntry(name, totalSeconds, penalties) {
 }
 
 async function renderLeaderboardModal(highlightName = null) {
+  updateAdminUI();
   const tbody = document.getElementById("leaderboardBody");
   tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 1.25rem; color: var(--accent-cyan);">⚡ Fetching live scores...</td></tr>`;
 
@@ -1359,7 +1407,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("ai_supabase_credentials", JSON.stringify({ url, anonKey }));
     initSupabase();
     cloudModal.classList.add("hidden");
-    alert("Supabase credentials saved! Connecting to cloud database...");
+    alert("¡Credenciales guardadas!\n\n💡 IMPORTANTE PARA VERCEL: Para que tus amigos en otros dispositivos compartan la misma tabla de puntuaciones, recuerda pegar estas mismas claves en el archivo 'supabase-config.js' y subirlas a GitHub.");
     renderLeaderboardModal(state.operatorName);
   });
 
@@ -1368,7 +1416,7 @@ document.addEventListener("DOMContentLoaded", () => {
     supabaseClient = null;
     updateCloudStatusUI(false);
     cloudModal.classList.add("hidden");
-    alert("Switched back to Local Storage mode.");
+    alert("Cambiado a modo de almacenamiento local (Local Storage).");
     renderLeaderboardModal(state.operatorName);
   });
 
@@ -1428,6 +1476,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Leaderboard Modal Open/Close
   const leaderboardModal = document.getElementById("leaderboardModal");
   const openLeaderboard = () => {
+    updateAdminUI();
     renderLeaderboardModal(state.operatorName);
     leaderboardModal.classList.remove("hidden");
   };
@@ -1439,13 +1488,53 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("closeLeaderboardBtn").addEventListener("click", closeLeaderboard);
   document.getElementById("resumeFromLeaderboardBtn").addEventListener("click", closeLeaderboard);
 
-  // Reset Leaderboard to default
-  document.getElementById("resetLeaderboardBtn").addEventListener("click", () => {
-    if (confirm("Reset the leaderboard back to standard AI benchmark scores?")) {
-      saveLeaderboard(DEFAULT_LEADERBOARD);
-      renderLeaderboardModal(state.operatorName);
+  // Reset Leaderboard to default (Admin only)
+  const resetBtn = document.getElementById("resetLeaderboardBtn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", async () => {
+      if (confirm("¿Estás seguro de que deseas resetear la tabla local de puntuaciones a los valores de fábrica?")) {
+        saveLeaderboard(DEFAULT_LEADERBOARD);
+        if (supabaseClient) {
+          try {
+            await supabaseClient.from("leaderboard").delete().neq("id", 0);
+          } catch (e) {
+            console.warn("Supabase reset notice:", e);
+          }
+        }
+        renderLeaderboardModal(state.operatorName);
+        alert("Puntuaciones restablecidas a los valores iniciales.");
+      }
+    });
+  }
+
+  // Secret trigger for Admin Mode: 5 clicks on modal-badge
+  let badgeClicks = 0;
+  let badgeClickTimer = null;
+  const rankBadge = document.querySelector("#leaderboardModal .modal-badge");
+  if (rankBadge) {
+    rankBadge.style.cursor = "pointer";
+    rankBadge.title = "Top 10 Global Ranking";
+    rankBadge.addEventListener("click", () => {
+      badgeClicks++;
+      clearTimeout(badgeClickTimer);
+      badgeClickTimer = setTimeout(() => { badgeClicks = 0; }, 1500);
+      if (badgeClicks >= 5) {
+        badgeClicks = 0;
+        toggleAdminMode();
+      }
+    });
+  }
+
+  // Keyboard shortcut Ctrl + Shift + A for Admin Mode
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.shiftKey && (e.key === "A" || e.key === "a")) {
+      e.preventDefault();
+      toggleAdminMode();
     }
   });
+
+  // Initial Admin UI check
+  updateAdminUI();
 
   // Mobile Keyboard Button
   const mobileKeyboardBtn = document.getElementById("openMobileKeyboardBtn");

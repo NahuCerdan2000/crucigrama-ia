@@ -1137,7 +1137,61 @@ kbd {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.leaderboard-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.status-indicator-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.status-indicator-dot.online {
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green);
+}
+
+.status-indicator-dot.offline {
+  background: #ffb703;
+  box-shadow: 0 0 8px rgba(255, 183, 3, 0.6);
+}
+
+.admin-controls-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-badge {
+  background: rgba(255, 77, 109, 0.15);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  font-size: 0.65rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.1em;
+}
+
+.cyber-btn-sm {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.75rem;
 }
 
 /* =====================================================================
