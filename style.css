@@ -53,13 +53,19 @@
   padding: 0;
 }
 
+html {
+  min-width: 100%;
+  width: 100%;
+}
+
 body.cyber-theme {
   background-color: var(--bg-primary);
   color: var(--text-main);
   font-family: var(--font-body);
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
+  min-width: 100vw;
+  width: fit-content;
   display: flex;
   flex-direction: column;
 }
@@ -106,6 +112,7 @@ body.cyber-theme {
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border-subtle);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  width: 100%;
 }
 
 .brand-section {
@@ -285,6 +292,7 @@ body.cyber-theme {
   z-index: 5;
   width: 100%;
   max-width: 1720px;
+  min-width: min-content;
   margin: 0 auto;
   padding: 1.5rem 2rem 2.5rem;
   display: flex;
@@ -306,6 +314,7 @@ body.cyber-theme {
   flex-direction: column;
   gap: 0.4rem;
   transition: all 0.25s ease;
+  width: 100%;
 }
 
 .clue-banner-header {
@@ -1284,12 +1293,21 @@ kbd {
 @media (max-width: 768px) {
   .app-header {
     padding: 1rem 1.25rem;
+    width: 100%;
+  }
+  .hud-panel {
+    width: 100%;
   }
   .main-title {
     font-size: 1.25rem;
   }
   .game-container {
     padding: 1rem;
+    width: 100%;
+    min-width: min-content;
+  }
+  .active-clue-banner {
+    width: 100%;
   }
   .crossword-section {
     padding: 0.85rem;
