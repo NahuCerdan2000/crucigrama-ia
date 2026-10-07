@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actividad Grupo 8 - Artificial Intellingence</title>
+  <meta name="description" content="AI Crossword Challenge - Actividad Grupo 8 - Artificial Intellingence. Solve the crossword, beat the clock, and enter the Top 10 Leaderboard!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="cyber-theme">
+  <!-- Cyber Background Canvas & Grid Lines -->
+  <div class="cyber-bg-overlay"></div>
+  <canvas id="neuralCanvas"></canvas>
+
+  <!-- Navigation / Header Bar -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="ai-badge">
+        <span class="pulsing-dot"></span>
+        <span class="ai-code">SYS://AI-CORE.v8</span>
+      </div>
+      <h1 class="main-title">Actividad Grupo 8 - Artificial Intellingence</h1>
+      <p class="subtitle">Neural Crossword Protocol &bull; Challenge Your Machine Intelligence</p>
+    </div>
+
+    <!-- Status & Timer HUD -->
+    <div class="hud-panel">
+      <div class="hud-item operator-tag" id="operatorBadge">
+        <span class="hud-label">OPERATOR</span>
+        <span class="hud-value" id="currentOperatorName">GUEST_USER</span>
+      </div>
+      <div class="hud-item timer-card">
+        <span class="hud-label">ELAPSED TIME</span>
+        <div class="timer-display" id="timerDisplay">00:00</div>
+      </div>
+      <div class="hud-item progress-card">
+        <span class="hud-label">SOLVED</span>
+        <div class="progress-display">
+          <span id="solvedCount">0</span><span class="total-denom">/10</span>
+        </div>
+      </div>
+      <div class="hud-actions">
+        <button id="soundToggleBtn" class="hud-btn" title="Toggle Sound FX" aria-label="Toggle Sound">
+          <span class="btn-icon" id="soundIcon">🔊</span>
+        </button>
+        <button id="leaderboardBtn" class="hud-btn hud-btn-accent" title="View Top 10 Leaderboard">
+          <span class="btn-icon">🏆</span>
+          <span class="btn-text">TOP 10</span>
+        </button>
+        <button id="changeUserBtn" class="hud-btn hud-btn-ghost" title="Change User">
+          <span class="btn-icon">👤</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Game Workspace -->
+  <main class="game-container">
+    <!-- Active Clue Banner -->
+    <div class="active-clue-banner" id="activeClueBanner">
+      <div class="clue-banner-header">
+        <span class="clue-tag" id="activeClueTag">SELECT A WORD</span>
+        <span class="clue-direction-indicator" id="activeDirectionTag">ACROSS / DOWN</span>
+      </div>
+      <div class="clue-banner-body">
+        <p class="clue-text" id="activeClueText">Click on any crossword square or clue to begin typing.</p>
+        <span class="clue-spanish-hint" id="activeClueSpanish"></span>
+      </div>
+    </div>
+
+    <!-- Central Split Layout: Crossword Board & Clues Sidebar -->
+    <div class="board-layout">
+      <!-- Crossword Grid Section -->
+      <section class="crossword-section">
+        <div class="grid-controls-bar">
+          <div class="quick-hints">
+            <span class="shortcut-tip"><kbd>&uarr;&darr;&larr;&rarr;</kbd> Navigate</span>
+            <span class="shortcut-tip"><kbd>Space</kbd> Direction</span>
+            <span class="shortcut-tip"><kbd>Backspace</kbd> Erase</span>
+          </div>
+          <div class="action-buttons">
+            <button id="checkPuzzleBtn" class="action-btn action-btn-secondary" title="Check your current answers">
+              <span>🔍 Check Answers</span>
+            </button>
+            <button id="revealLetterBtn" class="action-btn action-btn-warning" title="Reveal current letter (+15s penalty)">
+              <span>💡 Reveal Letter</span>
+            </button>
+            <button id="clearBoardBtn" class="action-btn action-btn-danger" title="Clear all entered letters">
+              <span>↺ Clear</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="crossword-wrapper" id="crosswordWrapper">
+          <div class="crossword-grid" id="crosswordGrid" role="grid" aria-label="Artificial Intelligence Crossword">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Clues Column Section -->
+      <aside class="clues-sidebar">
+        <div class="clues-header-tabs">
+          <h2 class="sidebar-title">CLUES &amp; DATA FEEDS</h2>
+          <button id="toggleSpanishBtn" class="pill-btn" title="Toggle Spanish translations">
+            <span class="pill-dot"></span>
+            <span id="spanishToggleLabel">Spanish Hints: OFF</span>
+          </button>
+        </div>
+
+        <div class="clues-scroll-container">
+          <!-- Across Clues -->
+          <div class="clue-group">
+            <h3 class="clue-group-title">
+              <span class="title-dir-icon">&rarr;</span> ACROSS (HORIZONTAL)
+            </h3>
+            <ul class="clues-list" id="acrossCluesList">
+              <!-- Dynamically populated -->
+            </ul>
+          </div>
+
+          <!-- Down Clues -->
+          <div class="clue-group">
+            <h3 class="clue-group-title">
+              <span class="title-dir-icon">&darr;</span> DOWN (VERTICAL)
+            </h3>
+            <ul class="clues-list" id="downCluesList">
+              <!-- Dynamically populated -->
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- MODAL 1: Operator Login / Start Modal -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-card cyber-glass">
+      <div class="modal-badge">SECURITY PROTOCOL &bull; LEVEL 8</div>
+      <h2 class="modal-title">AI OPERATOR AUTHENTICATION</h2>
+      <p class="modal-desc">
+        Welcome to <strong>Actividad Grupo 8 - Artificial Intellingence</strong>.<br>
+        Enter your agent codename or username to initiate the puzzle timer and record your score for the Top 10 Leaderboard.
+      </p>
+
+      <form id="loginForm" class="login-form">
+        <div class="input-wrapper">
+          <label for="usernameInput" class="input-label">OPERATOR CODENAME</label>
+          <div class="input-field-group">
+            <span class="input-prefix">&gt;_</span>
+            <input 
+              type="text" 
+              id="usernameInput" 
+              class="cyber-input" 
+              placeholder="e.g. CyberAgent_08" 
+              maxlength="20" 
+              autocomplete="off" 
+              required
+            >
+          </div>
+          <span class="input-hint">Minimum 2 characters &bull; Will be recorded on the leaderboard</span>
+        </div>
+
+        <div class="modal-button-row">
+          <button type="submit" id="startGameBtn" class="cyber-btn cyber-btn-primary">
+            <span class="btn-glow"></span>
+            <span class="btn-label">INITIATE MISSION &gt;&gt;</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Top 10 Leaderboard Modal -->
+  <div class="modal-overlay hidden" id="leaderboardModal">
+    <div class="modal-card modal-card-large cyber-glass">
+      <button class="modal-close-btn" id="closeLeaderboardBtn" aria-label="Close modal">&times;</button>
+      <div class="modal-badge">GLOBAL NEURAL RANKING</div>
+      <h2 class="modal-title">🏆 TOP 10 PLAYERS</h2>
+      <p class="modal-desc">Fastest completion times recorded for Grupo 8 Crossword.</p>
+
+      <div class="leaderboard-table-container">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th class="col-rank">RANK</th>
+              <th class="col-player">OPERATOR</th>
+              <th class="col-time">TIME</th>
+              <th class="col-penalties">PENALTY</th>
+              <th class="col-date">TIMESTAMP</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="leaderboard-footer">
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <button id="resetLeaderboardBtn" class="cyber-btn cyber-btn-outline" title="Reset leaderboard to default factory scores">
+            ↺ Reset Scores
+          </button>
+          <button id="cloudDbConfigBtn" class="cyber-btn cyber-btn-secondary" title="Configure Supabase Cloud Database">
+            ☁️ Supabase Setup
+          </button>
+        </div>
+        <button id="resumeFromLeaderboardBtn" class="cyber-btn cyber-btn-primary">
+          Continue Playing
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Supabase Cloud DB Config Modal -->
+  <div class="modal-overlay hidden" id="cloudConfigModal">
+    <div class="modal-card cyber-glass">
+      <button class="modal-close-btn" id="closeCloudConfigBtn" aria-label="Close modal">&times;</button>
+      <div class="modal-badge">DATABASE SYNCHRONIZATION</div>
+      <h2 class="modal-title">☁️ SUPABASE SETUP</h2>
+      <p class="modal-desc">
+        Connect to Supabase to synchronize the Top 10 Leaderboard across all devices in real-time.
+      </p>
+
+      <form id="cloudConfigForm" class="login-form">
+        <div class="input-wrapper">
+          <label for="supabaseUrlInput" class="input-label">SUPABASE PROJECT URL</label>
+          <div class="input-field-group">
+            <input 
+              type="url" 
+              id="supabaseUrlInput" 
+              class="cyber-input" 
+              placeholder="https://xyzcompany.supabase.co" 
+              autocomplete="off"
+            >
+          </div>
+        </div>
+
+        <div class="input-wrapper">
+          <label for="supabaseKeyInput" class="input-label">SUPABASE ANON (PUBLIC) KEY</label>
+          <div class="input-field-group">
+            <input 
+              type="text" 
+              id="supabaseKeyInput" 
+              class="cyber-input" 
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+              autocomplete="off"
+            >
+          </div>
+          <span class="input-hint">Found in Supabase: Project Settings &rarr; API &rarr; Project API keys (anon public)</span>
+        </div>
+
+        <div class="modal-button-row">
+          <button type="submit" id="saveCloudConfigBtn" class="cyber-btn cyber-btn-primary">
+            Connect &amp; Sync
+          </button>
+          <button type="button" id="disconnectCloudBtn" class="cyber-btn cyber-btn-outline">
+            Use Local Storage
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Victory Modal -->
+  <div class="modal-overlay hidden" id="victoryModal">
+    <div class="modal-card victory-card cyber-glass">
+      <div class="victory-header-animation">
+        <div class="celebration-icon">⚡🤖🎉</div>
+        <div class="modal-badge badge-success">PROTOCOL COMPLETED 100%</div>
+      </div>
+      <h2 class="modal-title glow-green">MISSION ACCOMPLISHED!</h2>
+      <p class="modal-desc">
+        All artificial intelligence modules have been synthesized correctly.
+      </p>
+
+      <div class="victory-stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">OPERATOR</span>
+          <span class="stat-value" id="victoryOperator">---</span>
+        </div>
+        <div class="stat-card stat-card-highlight">
+          <span class="stat-label">FINAL TIME</span>
+          <span class="stat-value" id="victoryTime">00:00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">LEADERBOARD RANK</span>
+          <span class="stat-value" id="victoryRank">#1</span>
+        </div>
+      </div>
+
+      <div class="victory-message" id="victoryRankMessage">
+        You made it to the Top 10!
+      </div>
+
+      <div class="modal-button-row">
+        <button id="viewLeaderboardFromVictoryBtn" class="cyber-btn cyber-btn-secondary">
+          🏆 View Top 10
+        </button>
+        <button id="playAgainBtn" class="cyber-btn cyber-btn-primary">
+          Play Again ↺
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cloud Database & Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
